@@ -37,6 +37,7 @@ function love.load()
     player.x = winW/2
     player.y = winH - 150
 
+    --bullider.init(2000)
     bullider.init(20000)
     player.collider = bullider.spawn(player.x, player.y, 5, "player")
 
@@ -241,14 +242,14 @@ function love.draw()
 
     lg.setColor(1, 1, 1)
     local lines = {
-        ("FPS: %d"):format(love.timer.getFPS()),
         ("Bullets: %d"):format(#bullets),
+        ("FPS: %d"):format(love.timer.getFPS()),
+        ("Collision Detection: %02fms"):format(collisionDetectionDuration() * 1000),
         "",
         ("Bullet Interval (I): %f"):format(bulletSpawner.interval),
         ("Bullet Speed (S): %f"):format(bulletSpawner.bulletSpeed),
         "",
-        ("Frame Advance (return, step = space): %s"):format(tostring(frameAdvance)),
-        ("Collision detection: %02fms"):format(collisionDetectionDuration() * 1000),
+        ("Frame Advance + Debug Draw (return, step = space): %s"):format(tostring(frameAdvance)),
         ("Continuous (C): %s"):format(tostring(bullider.continuous)),
         ("Midphase (M): %s"):format(tostring(bullider.midphase)),
     }
