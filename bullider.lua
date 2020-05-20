@@ -27,7 +27,7 @@ function bullider.init(maxColliders_)
     -- inUseList is filled here to preallocate the whole array.
     for i = 1, maxColliders do
         freeList[i] = i
-        inUseList[i] = 0 -- to preallocate
+        inUseList[i] = 0
     end
     freeList.n = maxColliders
     inUseList.n = 0
