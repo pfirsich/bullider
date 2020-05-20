@@ -23,7 +23,7 @@ local bulletSpawner = {
     interval = bulletIntervals[1],
     angle = 0.25,
     angleRange = 0.3,
-    bulletRadius = 10,
+    bulletRadius = 5,
     bulletSpeed = bulletSpeeds[3],
     bulletColor = {1, 0, 0},
     bulletLifetime = nil,
@@ -57,7 +57,9 @@ local function spawnBullet(x, y, radius, vx, vy, color, lifetime, group)
 end
 
 local function updateSpawner(spawner, dt)
-    spawner.x = math.sin(love.timer.getTime() / 600 * spawner.bulletSpeed) * 400 + winW/2
+    local spawnerAngle = love.timer.getTime() * 2.0
+    -- spawnerAngle = spawnerAngle / 300 * spawner.bulletSpeed
+    spawner.x = math.sin(spawnerAngle) * 400 + winW/2
     spawner.timer = spawner.timer + dt
     if spawner.timer > spawner.interval then
         local angle = (spawner.angle - spawner.angleRange / 2) * 2 * math.pi
