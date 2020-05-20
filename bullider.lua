@@ -9,12 +9,6 @@ local nextColliderId = 1
 local minInUse = 0
 local maxInUse = 0
 
--- I thought of keeping track of a region of in-use collider ids that would move through
--- the whole range (assuming only a small portion of it is used at a time), but sadly
--- the player will keep a fixed id for a long time and outlive almost all of the bullets
--- and will make this optimization almost useless. I think this could be improved though.
--- Maybe have each collider save the next in-use collider id? (Bookkeeping might be too much)
-
 function bullider.init(maxColliders_)
     maxColliders = maxColliders_
     for i = 1, maxColliders do
