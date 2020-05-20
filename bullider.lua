@@ -5,23 +5,15 @@ bullider.continuous = true
 
 local colliders = {}
 local maxColliders = 0
-local nextColliderId = 1
-local minInUse = 0
-local maxInUse = 0
-
--- I thought of keeping track of a region of in-use collider ids that would move through
--- the whole range (assuming only a small portion of it is used at a time), but sadly
--- the player will keep a fixed id for a long time and outlive almost all of the bullets
--- and will make this optimization almost useless. I think this could be improved though.
--- Maybe have each collider save the next in-use collider id? (Bookkeeping might be too much)
+local freeList = {}
+local inUseList = {}
 
 function bullider.init(maxColliders_)
     maxColliders = maxColliders_
     for i = 1, maxColliders do
         colliders[i] = {
             inUse = false,
-            prevInUse = 0, -- 0 = no previous in use
-            nextInUse = 0, -- 0 = no next in use
+            inUseListIndex = 0,
             x = 0, y = 0,
             lastX = 0, lastY = 0,
             radius = 0,
@@ -31,26 +23,29 @@ function bullider.init(maxColliders_)
             sweptBoundsRadius = 0,
         }
     end
+
+    -- inUseList is filled here to preallocate the whole array.
+    for i = 1, maxColliders do
+        freeList[i] = i
+        inUseList[i] = 0 -- to preallocate
+    end
+    freeList.n = maxColliders
+    inUseList.n = 0
 end
 
 function bullider.spawn(x, y, radius, group) --> number (colliderId)
-    local id = nextColliderId
-    local startId = id
-    local prevInUse = nil
-    while colliders[id].inUse do
-        prevInUse = id
-        id = id + 1
-        if id > maxColliders then
-            id = 1
-        end
-        if id == startId then
-            error("Too many colliders", 2)
-        end
+    if freeList.n == 0 then
+        error("Too many colliders", 2)
     end
+    local id = freeList[freeList.n]
+    freeList.n = freeList.n - 1
+    inUseList[inUseList.n + 1] = id
+    inUseList.n = inUseList.n + 1
 
     -- We need to make sure to overwrite every field
     local collider = colliders[id]
     collider.inUse = true
+    collider.inUseListIndex = inUseList.n
     collider.x = assert(x)
     collider.y = assert(y)
     collider.lastX = collider.x
@@ -61,48 +56,6 @@ function bullider.spawn(x, y, radius, group) --> number (colliderId)
     collider.sweptBoundsY = collider.y
     collider.sweptBoundsRadius = collider.radius
 
-    if maxInUse == 0 then
-        assert(minInUse == 0)
-        minInUse = id
-        maxInUse = id
-        -- those should be 0 already, but I want to set every field in every branch
-        collider.prevInUse = 0
-        collider.nextInUse = 0
-    elseif id > maxInUse then
-        if maxInUse > 0 then
-            colliders[maxInUse].nextInUse = id
-        end
-        collider.prevInUse = maxInUse
-        collider.nextInUse = 0
-        maxInUse = id
-    elseif id < minInUse then
-        if minInUse > 0 then
-            colliders[minInUse].prevInUse = id
-        end
-        collider.nextInUse = minInUse
-        collider.prevInUse = 0
-        minInUse = id
-    else
-        if prevInUse then
-            collider.prevInUse = prevInUse
-        else
-            collider.prevInUse = id - 1
-            while not colliders[collider.prevInUse].inUse do
-                collider.prevInUse = collider.prevInUse - 1
-            end
-        end
-
-        collider.nextInUse = id + 1
-        while not colliders[collider.nextInUse].inUse do
-            collider.nextInUse = collider.nextInUse + 1
-        end
-    end
-
-    nextColliderId = id + 1
-    if nextColliderId > maxColliders then
-        nextColliderId = 1
-    end
-
     return id
 end
 
@@ -110,18 +63,11 @@ function bullider.despawn(colliderId)
     local collider = colliders[colliderId]
     assert(collider and collider.inUse)
     collider.inUse = false
-    if collider.prevInUse > 0 then
-        colliders[collider.prevInUse].nextInUse = collider.nextInUse
-    else
-        assert(minInUse == colliderId)
-        minInUse = collider.nextInUse
-    end
-    if collider.nextInUse > 0 then
-        colliders[collider.nextInUse].prevInUse = collider.prevInUse
-    else
-        assert(maxInUse == colliderId)
-        maxInUse = collider.prevInUse
-    end
+    freeList[freeList.n + 1] = colliderId
+    freeList.n = freeList.n + 1
+    inUseList[collider.inUseListIndex] = inUseList[inUseList.n]
+    colliders[inUseList[inUseList.n]].inUseListIndex = collider.inUseListIndex
+    inUseList.n = inUseList.n - 1
 end
 
 function bullider.update(colliderId, x, y)
@@ -211,16 +157,15 @@ function bullider.getCollisions(colliderId, ...) --> list { colliderId1, collide
     end
 
     local numCollisions = 0
-    local id = minInUse
-    while id > 0 do
+    for i = 1, inUseList.n do
+        local id = inUseList[i]
         local other = colliders[id]
         if groupMatch[other.group] then
             if checkCollision(collider, other) then
-                collisions[numCollisions+1] = id
+                collisions[numCollisions + 1] = id
                 numCollisions = numCollisions + 1
             end
         end
-        id = other.nextInUse
     end
 
     for i = numCollisions + 1, #collisions do
