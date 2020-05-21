@@ -5,15 +5,14 @@ bullider.continuous = true
 
 local colliders = {}
 local maxColliders = 0
-local freeList = {}
-local inUseList = {}
+local maxInUseIndex = 0
 
 function bullider.init(maxColliders_)
     maxColliders = maxColliders_
     for i = 1, maxColliders do
         colliders[i] = {
+            index = i,
             inUse = false,
-            inUseListIndex = 0,
             x = 0, y = 0,
             lastX = 0, lastY = 0,
             radius = 0,
@@ -23,29 +22,19 @@ function bullider.init(maxColliders_)
             sweptBoundsRadius = 0,
         }
     end
-
-    -- inUseList is filled here to preallocate the whole array.
-    for i = 1, maxColliders do
-        freeList[i] = i
-        inUseList[i] = 0
-    end
-    freeList.n = maxColliders
-    inUseList.n = 0
 end
 
-function bullider.spawn(x, y, radius, group) --> number (colliderId)
-    if freeList.n == 0 then
+function bullider.spawn(x, y, radius, group) --> table (collider)
+    if maxInUseIndex == maxColliders then
         error("Too many colliders", 2)
     end
-    local id = freeList[freeList.n]
-    freeList.n = freeList.n - 1
-    inUseList[inUseList.n + 1] = id
-    inUseList.n = inUseList.n + 1
+    local index = maxInUseIndex + 1
+    maxInUseIndex = index
 
     -- We need to make sure to overwrite every field
-    local collider = colliders[id]
+    local collider = colliders[index]
+    collider.index = index
     collider.inUse = true
-    collider.inUseListIndex = inUseList.n
     collider.x = assert(x)
     collider.y = assert(y)
     collider.lastX = collider.x
@@ -56,22 +45,21 @@ function bullider.spawn(x, y, radius, group) --> number (colliderId)
     collider.sweptBoundsY = collider.y
     collider.sweptBoundsRadius = collider.radius
 
-    return id
+    return collider
 end
 
-function bullider.despawn(colliderId)
-    local collider = colliders[colliderId]
+function bullider.despawn(collider)
     assert(collider and collider.inUse)
     collider.inUse = false
-    freeList[freeList.n + 1] = colliderId
-    freeList.n = freeList.n + 1
-    inUseList[collider.inUseListIndex] = inUseList[inUseList.n]
-    colliders[inUseList[inUseList.n]].inUseListIndex = collider.inUseListIndex
-    inUseList.n = inUseList.n - 1
+    -- swap collider to end and pop
+    colliders[collider.index], colliders[maxInUseIndex] =
+        colliders[maxInUseIndex], colliders[collider.index]
+    maxInUseIndex = maxInUseIndex - 1
+    -- fix the swapped in collider
+    colliders[collider.index].index = collider.index
 end
 
-function bullider.update(colliderId, x, y)
-    local collider = colliders[colliderId]
+function bullider.update(collider, x, y)
     assert(collider and collider.inUse)
     collider.lastX = collider.x
     collider.lastY = collider.y
@@ -86,12 +74,6 @@ function bullider.update(colliderId, x, y)
         local relLen = math.sqrt(relX*relX + relY*relY)
         collider.sweptBoundsRadius = relLen / 2.0 + collider.radius
     end
-end
-
-function bullider.getCollider(colliderId)
-    local collider = colliders[colliderId]
-    assert(collider and collider.inUse)
-    return collider
 end
 
 local function circleCircle(x1, y1, r1, x2, y2, r2)
@@ -144,8 +126,7 @@ end
 
 local collisions = {}
 local groupMatch = {}
-function bullider.getCollisions(colliderId, ...) --> list { colliderId1, colliderId2, ... }
-    local collider = colliders[colliderId]
+function bullider.getCollisions(collider, ...) --> list { collider1, collider2, ... }
     assert(collider and collider.inUse)
 
     for k, _ in pairs(groupMatch) do
@@ -157,12 +138,11 @@ function bullider.getCollisions(colliderId, ...) --> list { colliderId1, collide
     end
 
     local numCollisions = 0
-    for i = 1, inUseList.n do
-        local id = inUseList[i]
-        local other = colliders[id]
+    for i = 1, maxInUseIndex do
+        local other = colliders[i]
         if groupMatch[other.group] then
             if checkCollision(collider, other) then
-                collisions[numCollisions + 1] = id
+                collisions[numCollisions + 1] = other
                 numCollisions = numCollisions + 1
             end
         end

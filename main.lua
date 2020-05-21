@@ -219,14 +219,14 @@ function love.draw()
 
     for _, bullet in ipairs(bullets) do
         if frameAdvance and bullet.collider then
-            drawColliderDebug(bullider.getCollider(bullet.collider))
+            drawColliderDebug(bullet.collider)
         end
         lg.setColor(bullet.color)
         lg.circle("fill", bullet.x, bullet.y, bullet.radius)
     end
 
     if frameAdvance then
-        drawColliderDebug(bullider.getCollider(player.collider))
+        drawColliderDebug(player.collider)
     end
 
     -- I put this here, because of frame advance
@@ -242,7 +242,7 @@ function love.draw()
         py = py + lmr() * hitJiggleAmplitude
     end
     lg.setColor(lerpArray({0, 0, 1}, {1, 1, 1}, player.hit))
-    lg.circle("fill", px, py, bullider.getCollider(player.collider).radius)
+    lg.circle("fill", px, py, player.collider.radius)
 
     lg.setColor(1, 1, 1)
     local lines = {
