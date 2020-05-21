@@ -34,13 +34,16 @@ local bullets = {}
 
 local collisionDetectionDuration = MovingAverage(1000)
 
+local playerGroup = bullider.group()
+local bulletGroup = bullider.group()
+
 function love.load()
     player.x = winW/2
     player.y = winH - 150
 
     --bullider.init(2000)
     bullider.init(20000)
-    player.collider = bullider.spawn(player.x, player.y, 5, "player")
+    player.collider = bullider.spawn(player.x, player.y, 5, playerGroup)
 
     bulletSpawner.x = winW/2
     bulletSpawner.y = 50
@@ -69,7 +72,7 @@ local function updateSpawner(spawner, dt)
             local vx = math.cos(angle) * spawner.bulletSpeed
             local vy = math.sin(angle) * spawner.bulletSpeed
             spawnBullet(spawner.x, spawner.y, spawner.bulletRadius, vx, vy,
-                spawner.bulletColor, spawner.bulletLifetime, "bullet")
+                spawner.bulletColor, spawner.bulletLifetime, bulletGroup)
             angle = angle + spawner.angleRange / (spawner.amount - 1) * 2 * math.pi
         end
         spawner.spawnTimer = 0
@@ -167,7 +170,7 @@ function love.update(dt)
     updatePlayer(player, dt)
 
     local start = love.timer.getTime()
-    local collisions = bullider.getCollisions(player.collider, "bullet")
+    local collisions = bullider.getCollisions(player.collider, bulletGroup)
     if #collisions > 0 then
         print("collisions: ", unpack(collisions))
         player.hit = 1.0

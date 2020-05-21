@@ -1,3 +1,6 @@
+local bit = require("bit")
+local band, bor, lshift = bit.band, bit.bor, bit.lshift
+
 local bullider = {}
 
 bullider.midphase = true
@@ -6,6 +9,7 @@ bullider.continuous = true
 local colliders = {}
 local maxColliders = 0
 local maxInUseIndex = 0
+local groupId = 0
 
 function bullider.init(maxColliders_)
     maxColliders = maxColliders_
@@ -22,6 +26,29 @@ function bullider.init(maxColliders_)
             sweptBoundsRadius = 0,
         }
     end
+end
+
+function bullider.group()
+    if groupId == 0 then
+        groupId = 1
+        return groupId
+    end
+
+    local nextId = lshift(groupId, 1)
+    if nextId < groupId then
+        error("Too many groups", 2)
+    end
+    groupId = nextId
+    return groupId
+end
+
+function bullider.joinGroups(...)
+    local joined = 0
+    for i = 1, select("#", ...) do
+        local group = select(i, ...)
+        joined = bor(joined, group)
+    end
+    return joined
 end
 
 function bullider.spawn(x, y, radius, group) --> table (collider)
@@ -125,22 +152,13 @@ local function checkCollision(collider, other) --> boolean
 end
 
 local collisions = {}
-local groupMatch = {}
-function bullider.getCollisions(collider, ...) --> list { collider1, collider2, ... }
+function bullider.getCollisions(collider, group) --> list { collider1, collider2, ... }
     assert(collider and collider.inUse)
-
-    for k, _ in pairs(groupMatch) do
-        groupMatch[k] = nil
-    end
-    for i = 1, select("#", ...) do
-        local group = select(i, ...)
-        groupMatch[group] = true
-    end
 
     local numCollisions = 0
     for i = 1, maxInUseIndex do
         local other = colliders[i]
-        if groupMatch[other.group] then
+        if band(other.group, group) ~= 0 then
             if checkCollision(collider, other) then
                 collisions[numCollisions + 1] = other
                 numCollisions = numCollisions + 1
