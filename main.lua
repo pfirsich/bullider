@@ -19,7 +19,8 @@ local bulletIntervals = {0.01, 0.2, 0.5, 1.0}
 local bulletSpawner = {
     x = 0, y = 0,
     amount = 20,
-    timer = 0,
+    time = 0,
+    spawnTimer = 0,
     interval = bulletIntervals[1],
     angle = 0.25,
     angleRange = 0.3,
@@ -57,11 +58,12 @@ local function spawnBullet(x, y, radius, vx, vy, color, lifetime, group)
 end
 
 local function updateSpawner(spawner, dt)
-    local spawnerAngle = love.timer.getTime() * 2.0
-    -- spawnerAngle = spawnerAngle / 300 * spawner.bulletSpeed
-    spawner.x = math.sin(spawnerAngle) * 400 + winW/2
-    spawner.timer = spawner.timer + dt
-    if spawner.timer > spawner.interval then
+    spawner.time = spawner.time + dt
+    local cosArg = spawner.time * 2.0
+    -- cosArg = cosArg / 300 * spawner.bulletSpeed
+    spawner.x = math.sin(cosArg) * 400 + winW/2
+    spawner.spawnTimer = spawner.spawnTimer + dt
+    if spawner.spawnTimer > spawner.interval then
         local angle = (spawner.angle - spawner.angleRange / 2) * 2 * math.pi
         for i = 1, spawner.amount do
             local vx = math.cos(angle) * spawner.bulletSpeed
@@ -70,7 +72,7 @@ local function updateSpawner(spawner, dt)
                 spawner.bulletColor, spawner.bulletLifetime, "bullet")
             angle = angle + spawner.angleRange / (spawner.amount - 1) * 2 * math.pi
         end
-        spawner.timer = 0
+        spawner.spawnTimer = 0
     end
 end
 
